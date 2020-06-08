@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<!-- Reference: https://threejsfundamentals.org/threejs/lessons/threejs-fundamentals.html -->
+<html>
+<style>
+  body { margin: 0;}
+</style>  
+<body>
+  <canvas id="work-space" width="855" height="480"></canvas>
+  <script type="module">
+    import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/build/three.module.js';
+    import { OrbitControls } from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/examples/jsm/controls/OrbitControls.js';
+    import { TransformControls } from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/examples/jsm/controls/TransformControls.js';
+
+    function main() {
+      const canvas = document.getElementById('work-space');
+      const context = canvas.getContext( 'webgl2', { alpha: false } );
+      const renderer = new THREE.WebGLRenderer({canvas, context});
+
+      const fov = 75;
+      const aspect = 16/9;  
+      const near = 0.1;
+      const far = 50;
+      const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+      camera.position.set( 0, 5, 5 );
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableKeys = false;
+
+      const transformer = new TransformControls(camera, renderer.domElement);
+      
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let intersected = null;
+      let selected = null;
+
+      const scene = new THREE.Scene();
+      {
+        const color = 0xFFFFFF;
+        const intensity = 1;
+        const light = new THREE.DirectionalLight(color, intensity);
+        light.position.set(-1, 2, 4);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight( 0x404040 ));
+      }
+
+      const gridHelper = new THREE.GridHelper( 10, 20 );
+      scene.add(gridHelper);
+
+      var axesHelper = new THREE.AxesHelper( 5 );
+      scene.add(axesHelper);
+
+      const boxWidth = 1;
+      const boxHeight = 1;
+      const boxDepth = 1;
+      const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+
+      const texture = new THREE.TextureLoader().load('./resources/crate.gif', render );
+
+      function makeInstance(geometry, x) {
+        
+        const material = new THREE.MeshPhongMaterial({map: texture});
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.x = x;
+
+        return cube;
+      }
+
+      const cubes = [
+        makeInstance(geometry, 0),
+        makeInstance(geometry, -2),
+        makeInstance(geometry, 2),
+      ];
+
+      const group = new THREE.Group();
+      cubes.forEach(cube => group.add(cube));
+
+      scene.add(group);
+      scene.add(transformer);
+
+      function onMouseMove( event ) {
+        event.preventDefault();
+        // calculate mouse position in normalized device coordinates
+        // (-1 to +1) for both components
+
+        mouse.x = ( event.clientX / canvas.width ) * 2 - 1;
+        mouse.y = - ( event.clientY / canvas.height ) * 2 + 1;
+
+      }
+
+      function onClick( event ) {
+        
+        if (!intersected) {
+          return;
+        }
+
+        if ( selected )  {
+          if( selected.uuid === intersected.uuid ) {
+            return;
+          }
+          selected.material.emissive.setHex( intersected.currentHex );
+        } 
+
+        selected = intersected;
+        selected.currentHex = intersected.currentHex;
+        selected.material.emissive.setHex( 0xff00ff );
+
+        transformer.attach( selected );
+        controls.enabled = false;
+        
+      }
+
+      function onKeyDown( event ) {
+        event.preventDefault();
+
+        switch(event.keyCode) {
+          case 38: // UP-ARROW
+            group.translateZ(1);
+            break; 
+          case 40: // DOWN-ARROW
+            group.translateZ(-1);
+            break;
+          case 39: // RIGHT-ARROW
+            group.translateX(1);
+            break; 
+          case 37: // LEFT-ARROW
+            group.translateX(-1);
+            break;
+          
+          case 82: // R
+						transformer.setMode( "rotate" );
+						break;
+          case 83: // S
+            transformer.setMode( "scale" );
+						break;
+          case 83: // T
+            transformer.setMode( "translate" );
+						break;
+
+          case 88: // X
+						transformer.showX = ! transformer.showX;
+						break;
+					case 89: // Y
+						transformer.showY = ! transformer.showY;
+						break;
+					case 90: // Z
+						transformer.showZ = ! transformer.showZ;
+						break;
+          
+          case 32: // SPACEBAR
+						transformer.enabled = ! transformer.enabled;
+		  			break;
+
+          case 27: // ESC
+            selected && selected.material.emissive.setHex( selected.currentHex );
+            selected = null;
+            transformer.detach();
+            controls.enabled = true;
+        }
+      }
+
+      function render(time) {
+        // update the picking ray with the camera and mouse position
+        raycaster.setFromCamera( mouse, camera );
+
+        // calculate objects intersecting the picking ray
+        const intersect = raycaster.intersectObjects( group.children )[0];
+
+        if ( intersect ) {
+          if ( !intersected ) {
+            intersected = intersect.object;
+            intersected.currentHex = intersected.material.emissive.getHex();
+            intersected.material.emissive.setHex( 0xff0000 );
+          } else {
+            if (intersected.uuid !== intersect.object.uuid){
+              intersected.material.emissive.setHex( intersected.currentHex );
+            }
+          }
+        } else {
+          if ( intersected )  {
+            if( selected && intersected.uuid === selected.uuid ) {
+              selected.material.emissive.setHex( 0xff00ff );
+            } else {
+              intersected.material.emissive.setHex( intersected.currentHex );
+            }
+          }
+					intersected = null;
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      canvas.addEventListener('mousemove', onMouseMove, false);
+      canvas.addEventListener('click', onClick, false);
+      document.addEventListener('keydown', onKeyDown, false);
+      requestAnimationFrame(render);
+    }
+
+    main();
+  </script>
+
+</body>
+</html>

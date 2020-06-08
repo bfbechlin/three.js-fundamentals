@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- Reference: https://threejsfundamentals.org/threejs/lessons/threejs-fundamentals.html -->
+<html>
+<style>
+  body { margin: 0;}
+</style>  
+<body>
+  <canvas id="work-space" width="855" height="480"></canvas>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+  <script type="module">
+    import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/build/three.module.js';
+    import { GLTFLoader } from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/examples/jsm/loaders/GLTFLoader.js';
+    import Stats from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/examples/jsm/libs/stats.module.js';
+
+    function main() {
+
+      const canvas = document.getElementById('work-space');
+      const renderer = new THREE.WebGLRenderer({canvas});
+
+      const camera = new THREE.PerspectiveCamera(75, 16/9, 0.1, 50);
+      camera.position.set( 0, 1, 1 );
+      camera.lookAt(0, 0, 0);
+
+      const scene = new THREE.Scene();
+      scene.add(new THREE.AmbientLight( 0xFFFFFF ));
+
+      const geometry = new THREE.BoxBufferGeometry(1, 1, 1);
+
+      const crate_texture = new THREE.TextureLoader().load('./resources/crate.gif', render );
+      const uv_texture = new THREE.TextureLoader().load('./resources/uv_grid.jpg', render );
+
+      const material = new THREE.MeshPhongMaterial({map: uv_texture});
+
+      const cube = new THREE.Mesh(geometry, material);
+
+      let model = new THREE.Mesh();
+        
+      scene.add(cube);
+      
+      const parameters = {
+        autoUpdateMatrix: true,
+        texture: 0,
+        needsUpdate: () => material.needsUpdate = true,
+        removeTexture: () => material.map = undefined,
+        removeFromScene: () => { 
+          scene.remove(model);
+          scene.add(cube);
+        },
+        addInScene: () => {
+          new GLTFLoader().load( './resources/Soldier.glb', (gltf) => {
+            model = gltf.scene;
+            model.scale.set(0.5, 0.5, 0.5);
+            scene.add(model);
+            model.traverse((object) => {if ( object.isMesh ) object.castShadow = true;}); 
+          });
+          scene.remove(cube);
+        },
+        dispose: () => {
+          model.children[0].children.forEach(child => {
+            if(child.geometry) {
+              child.geometry.dispose();
+            }
+
+            if(child.material) {
+              child.material.dispose();
+            }
+          });
+        }
+      };
+      const gui = new dat.GUI();
+
+      const update = gui.addFolder('Update');
+
+      update.add(parameters, 'autoUpdateMatrix').onChange(
+        () => cube.matrixAutoUpdate = parameters.autoUpdateMatrix
+      );
+
+      update.open();
+
+      const texture = gui.addFolder('Texture');
+
+      texture.add(parameters, 'texture', {'UV': 0, 'CRATE': 1}).onChange(
+        () => material.map = Number(parameters.texture) === 0 ? uv_texture : crate_texture
+      );
+      texture.add(parameters, 'removeTexture');
+      texture.add(parameters, 'needsUpdate');
+      
+      texture.open();
+
+      const remove = gui.addFolder('Memory Management');
+
+      remove.add(parameters, 'removeFromScene');
+      remove.add(parameters, 'addInScene');
+      remove.add(parameters, 'dispose');
+      
+      remove.open();
+
+      const stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+      if (typeof window.__THREE_DEVTOOLS__ !== 'undefined') {
+        window.__THREE_DEVTOOLS__.dispatchEvent(new CustomEvent('observe', { detail: scene }));
+        window.__THREE_DEVTOOLS__.dispatchEvent(new CustomEvent('observe', { detail: renderer }));
+      }
+
+      function render(time) {
+        cube.rotation.x = time / 1000;
+        cube.rotation.y = time / 1000;
+
+        model.rotation.x = time / 1000;
+        model.rotation.y = time / 1000;
+
+        stats.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    main();
+  </script>
+
+</body>
+</html>

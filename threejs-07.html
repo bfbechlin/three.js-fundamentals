@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- Reference: https://threejsfundamentals.org/threejs/lessons/threejs-fundamentals.html -->
+<html>
+<style>
+  body { margin: 0;}
+</style>  
+<body>
+  <canvas id="work-space" width="855" height="480"></canvas>
+  <script type="module">
+    import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/build/three.module.js';
+    import { OrbitControls } from 'https://threejsfundamentals.org/threejs/resources/threejs/r115/examples/jsm/controls/OrbitControls.js';
+
+    function main() {
+      const canvas = document.getElementById('work-space');
+      const context = canvas.getContext( 'webgl2', { alpha: false } );
+      const renderer = new THREE.WebGLRenderer({canvas, context});
+
+      const fov = 75;
+      const aspect = 16/9;  
+      const near = 0.1;
+      const far = 50;
+      const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+      camera.position.set( 0, 5, 5 );
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let intersected = null;
+
+      const scene = new THREE.Scene();
+      {
+        const color = 0xFFFFFF;
+        const intensity = 1;
+        const light = new THREE.DirectionalLight(color, intensity);
+        light.position.set(-1, 2, 4);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight( 0x404040 ));
+      }
+
+      const gridHelper = new THREE.GridHelper( 10, 20 );
+      scene.add(gridHelper);
+
+      var axesHelper = new THREE.AxesHelper( 5 );
+      scene.add(axesHelper);
+
+      const boxWidth = 1;
+      const boxHeight = 1;
+      const boxDepth = 1;
+      const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+
+      function makeInstance(geometry, color, x) {
+        const material = new THREE.MeshPhongMaterial({color});
+
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        cube.position.x = x;
+
+        return cube;
+      }
+
+      const cubes = [
+        makeInstance(geometry, 0x44aa88,  0),
+        makeInstance(geometry, 0x8844aa, -2),
+        makeInstance(geometry, 0xaa8844,  2),
+      ];
+
+      function onMouseMove( event ) {
+        event.preventDefault();
+        // calculate mouse position in normalized device coordinates
+        // (-1 to +1) for both components
+
+        mouse.x = ( event.clientX / canvas.width ) * 2 - 1;
+        mouse.y = - ( event.clientY / canvas.height ) * 2 + 1;
+
+      }
+
+      function render(time) {
+        cubes.forEach((cube, ndx) => {
+          const speed = 1 + ndx * .1;
+          const rot = time * speed / 1000;
+          cube.rotation.x = rot;
+          cube.rotation.y = rot;
+        });
+
+        // update the picking ray with the camera and mouse position
+        raycaster.setFromCamera( mouse, camera );
+
+        // calculate objects intersecting the picking ray
+        const intersect = raycaster.intersectObjects( scene.children ).filter(
+          (cast) => !(cast.object.uuid === gridHelper.uuid || cast.object.uuid === axesHelper.uuid)
+        )[0];
+
+        if ( intersect ) {
+          if ( !intersected ) {
+            intersected = intersect.object;
+            intersected.currentHex = intersected.material.emissive.getHex();
+            intersected.material.emissive.setHex( 0xff0000 );
+          } else {
+            if (intersected.uuid !== intersect.object.uuid){
+              intersected.material.emissive.setHex( intersected.currentHex );
+            }
+          }
+        } else {
+          if ( intersected )  {
+            intersected.material.emissive.setHex( intersected.currentHex );
+          }
+					intersected = null;
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      canvas.addEventListener( 'mousemove', onMouseMove, false );
+      requestAnimationFrame(render);
+    }
+
+    main();
+  </script>
+
+</body>
+</html>

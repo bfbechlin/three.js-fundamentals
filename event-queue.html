@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <img id="thumbs-down" src="https://media.giphy.com/media/3ohhwH6yMO7ED5xc7S/giphy.gif" width="480" height="270" ></img>
+  <img id="thumbs-up" src="https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif" width="480" height="360" ></img>
+  </br>
+  COUNTER: <a id="counter"></a>
+  </br>
+  <button onclick="bad()"> WHILE </button>
+  <button onclick="good()"> FRAME </button>
+  <script>
+    const gifs = {
+      'good': document.getElementById('thumbs-up'),
+      'bad': document.getElementById('thumbs-down'),
+    }
+    const element = document.getElementById('counter');
+
+    function bad() {
+      gifs.good.style.visibility = 'hidden';
+      gifs.bad.style.visibility = '';
+
+      let i = 1;
+      while(i > 0) {
+        element.innerHTML = `${i++}`;
+      }
+    }
+
+    function good() {
+      gifs.bad.style.visibility = 'hidden';
+      gifs.good.style.visibility = '';
+      let i = 1;
+      function callback() {
+        element.innerHTML = `${i++}`;
+        setTimeout(callback, 0); //ms
+      }
+      callback();
+    }
+  </script>
+
+</body>
+</html>
